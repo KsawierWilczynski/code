@@ -616,6 +616,11 @@ pub async fn edit_subscription(
             ..
         } if open_charge.status == ChargeStatus::Failed => {
             if cancelled {
+                DBUsersSubscriptionsAffiliations::deactivate(
+                    subscription.id,
+                    &mut *transaction,
+                )
+                .await?;
                 open_charge.status = ChargeStatus::Cancelled;
             } else {
                 // Forces another resubscription attempt
@@ -635,6 +640,11 @@ pub async fn edit_subscription(
         ) =>
         {
             open_charge.status = if cancelled {
+                DBUsersSubscriptionsAffiliations::deactivate(
+                    subscription.id,
+                    &mut *transaction,
+                )
+                .await?;
                 ChargeStatus::Cancelled
             } else {
                 ChargeStatus::Open
@@ -2073,7 +2083,6 @@ pub async fn stripe_webhook(
                                 .and_then(|m| m.affiliate_code)
                             {
                                 DBUsersSubscriptionsAffiliations {
-                                    id: 0,
                                     subscription_id: subscription.id,
                                     affiliate_code: DBAffiliateCodeId::from(
                                         affiliate_code,
@@ -2083,8 +2092,6 @@ pub async fn stripe_webhook(
                                 .insert(&mut *transaction)
                                 .await?;
                             }
-
-                            // TODO affiliate code
                         };
 
                         subscription.status = SubscriptionStatus::Provisioned;
